@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkSim v1.0 | Pixel Parking</title>
+    <!-- Pixel Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Main Application Container -->
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <div class="pixel-car"></div>
+                <h1 class="pixel-text">PARKSIM_OS</h1>
+            </div>
+            <div class="user-status" id="user-status" style="display: none;">
+                <div class="user-info">
+                    <span id="username-display" class="pixel-label"></span>
+                    <span id="role-display" class="role-badge"></span>
+                </div>
+                <button id="logout-btn" class="pixel-btn sm">
+                    EXIT
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- Auth Section -->
+            <section id="auth-section" class="auth-section">
+                <div class="pixel-card auth-card">
+                    <div class="pixel-border"></div>
+                    <div class="card-content">
+                        <div class="auth-header">
+                            <h2 id="auth-title">SYSTEM_BOOT</h2>
+                            <p class="auth-subtitle" id="auth-subtitle">Initialize simulation link</p>
+                        </div>
+                        
+                        <form id="auth-form" class="auth-form">
+                            <div class="form-group">
+                                <label for="username">ID_USER:</label>
+                                <input type="text" id="username" placeholder="USERNAME..." autocomplete="off" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">PASSCODE:</label>
+                                <input type="password" id="password" placeholder="PASSWORD..." autocomplete="off" required>
+                            </div>
+                            
+                            <!-- Role Selection (Hidden in Login mode via JS) -->
+                            <div class="form-group" id="role-group" style="display: none;">
+                                <label for="role">ASSIGN_ROLE:</label>
+                                <select id="role">
+                                    <option value="user">OPERATOR (VIEW ONLY)</option>
+                                    <option value="admin">ADMIN (CONTROL)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="auth-actions">
+                                <button type="submit" id="auth-submit" class="pixel-btn primary">
+                                    EXECUTE
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <p class="auth-toggle">
+                            <span id="auth-toggle-text">No ID?</span>
+                            <a href="#" id="auth-toggle-link" class="pixel-link">CREATE_NEW</a>
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="dashboard-section" style="display: none;">
+                <div class="dashboard-header">
+                    <div class="simulation-status">
+                        <span class="view-mode-label">MODE: <span id="view-mode-text">SIMULATION</span></span>
+                    </div>
+                    <div class="legend">
+                        <div class="legend-item"><span class="block free"></span> FREE</div>
+                        <div class="legend-item"><span class="block occupied"></span> BUSY</div>
+                    </div>
+                </div>
+                
+                <!-- The Parking Simulator Grid -->
+                <div id="parking-grid" class="parking-grid">
+                    <!-- Dynamic Pixel Spots -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+</body>
+</html>

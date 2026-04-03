@@ -1,0 +1,368 @@
+/* ==================================================
+             PIXELATED CREAM / SIMULATOR THEME
+   ================================================== */
+
+:root {
+    /* Cream Simulator Palette */
+    --bg-cream: #f4f1de;
+    --paper: #f1f1e6;
+    --border-dark: #3d405b;
+    --slate: #3d405b;
+    --terracotta: #e07a5f;
+    --moss: #81b29a;
+    --sand: #f2cc8f;
+    
+    --success: #609b7c;
+    --error: #b25d48;
+    
+    /* Pixel Typography */
+    --font-pixel: 'Press Start 2P', cursive;
+    --font-ui: 'Silkscreen', cursive;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    image-rendering: pixelated;
+}
+
+body {
+    background-color: var(--bg-cream);
+    color: var(--slate);
+    font-family: var(--font-ui);
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+.app-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2.5rem 1rem;
+}
+
+/* ==================================================
+                HEADER & NAVIGATION
+================================================== */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 4px solid var(--border-dark);
+    padding-bottom: 2rem;
+    margin-bottom: 4rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.pixel-car {
+    width: 32px;
+    height: 32px;
+    background-color: var(--terracotta);
+    box-shadow: 
+        4px 4px 0 var(--border-dark),
+        -4px 4px 0 var(--border-dark),
+        4px -4px 0 var(--border-dark),
+        -4px -4px 0 var(--border-dark);
+    position: relative;
+}
+
+.pixel-text {
+    font-family: var(--font-pixel);
+    font-size: 1.2rem;
+    letter-spacing: -2px;
+    color: var(--slate);
+}
+
+.user-status {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.pixel-label { font-size: 0.8rem; color: var(--slate); font-weight: bold;}
+.role-badge {
+    background: var(--sand);
+    border: 2px solid var(--border-dark);
+    font-size: 0.6rem;
+    padding: 3px 6px;
+    text-transform: uppercase;
+}
+
+/* ==================================================
+                    BUTTONS
+================================================== */
+.pixel-btn {
+    font-family: var(--font-pixel);
+    background: var(--paper);
+    border: 4px solid var(--border-dark);
+    box-shadow: 4px 4px 0 var(--border-dark);
+    padding: 10px 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: transform 0.1s;
+    outline: none;
+}
+
+.pixel-btn:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0 var(--border-dark);
+}
+
+.pixel-btn.primary {
+    background: var(--terracotta);
+    color: white;
+}
+
+.pixel-btn.sm {
+    padding: 5px 10px;
+    font-size: 0.5rem;
+}
+
+/* ==================================================
+                    AUTH CARDS
+================================================== */
+.auth-section {
+    display: flex;
+    justify-content: center;
+}
+
+.pixel-card {
+    background: white;
+    border: 4px solid var(--border-dark);
+    box-shadow: 10px 10px 0 rgba(0,0,0,0.1);
+    padding: 3rem;
+    width: 100%;
+    max-width: 480px;
+    position: relative;
+}
+
+.auth-header h2 {
+    font-family: var(--font-pixel);
+    font-size: 1rem;
+    margin-bottom: 15px;
+    color: var(--terracotta);
+}
+
+.auth-subtitle {
+    font-size: 0.8rem;
+    margin-bottom: 2.5rem;
+    color: var(--slate);
+    opacity: 0.7;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+    border: 3px solid var(--border-dark);
+    padding: 12px;
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    background: var(--paper);
+    outline: none;
+}
+
+.auth-toggle {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.75rem;
+}
+
+.pixel-link {
+    color: var(--terracotta);
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+/* ==================================================
+                PARKING SIMULATOR GRID
+================================================== */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3rem;
+    padding: 10px;
+    background: rgba(0,0,0,0.03);
+    border: 2px dashed var(--border-dark);
+}
+
+.view-mode-label {
+    font-family: var(--font-pixel);
+    font-size: 0.6rem;
+}
+
+.legend {
+    display: flex;
+    gap: 20px;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.block {
+    display: inline-block;
+    width: 12px; height: 12px;
+    margin-right: 5px;
+    border: 2px solid var(--border-dark);
+}
+.block.free { background: var(--moss); }
+.block.occupied { background: var(--terracotta); }
+
+.parking-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2.5rem;
+}
+
+/* Pixel Slot Styling with Stepped Entrance */
+.pixel-slot {
+    background: white;
+    border: 4px solid var(--border-dark);
+    padding: 2rem;
+    position: relative;
+    box-shadow: 6px 6px 0 rgba(0,0,0,0.05);
+    animation: pixel-pop 0.4s steps(4) ease-out;
+    transition: transform 0.2s steps(2);
+}
+
+@keyframes pixel-pop {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.pixel-slot:hover {
+    transform: translate(-4px, -4px);
+    box-shadow: 10px 10px 0 rgba(0,0,0,0.1);
+}
+
+.slot-header {
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.slot-id {
+    font-family: var(--font-pixel);
+    font-size: 0.7rem;
+    color: var(--slate);
+}
+
+/* Visual Indicator Box with Wiggle */
+.indicator-box {
+    width: 24px; height: 24px;
+    border: 4px solid var(--border-dark);
+    transition: background 0.3s steps(3);
+}
+
+.pixel-slot.occupied .indicator-box {
+    animation: heartbeat 2s steps(4) infinite;
+}
+
+@keyframes heartbeat {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+.pixel-slot.free .indicator-box { background: var(--moss); }
+.pixel-slot.occupied .indicator-box { background: var(--terracotta); }
+
+.slot-location {
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+    color: var(--slate);
+    opacity: 0.8;
+}
+
+.slot-status-text {
+    font-family: var(--font-pixel);
+    font-size: 0.45rem;
+    margin-bottom: 1.5rem;
+    display: block;
+}
+
+.controls .pixel-btn {
+    width: 100%;
+}
+
+.controls.hidden {
+    display: none;
+}
+
+/* ==================================================
+                    PIXEL TOASTS
+================================================== */
+.toast-container {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.toast {
+    pointer-events: all;
+    background: #fff;
+    border: 4px solid var(--border-dark);
+    box-shadow: 8px 8px 0 rgba(0,0,0,0.15);
+    padding: 1rem 1.5rem;
+    min-width: 280px;
+    position: relative;
+    animation: toast-in 0.4s steps(4) forwards;
+}
+
+@keyframes toast-in {
+    0% { transform: translateX(120%); }
+    100% { transform: translateX(0); }
+}
+
+.toast.success { border-color: var(--moss); }
+.toast.error { border-color: var(--terracotta); }
+
+.toast-content h4 {
+    font-family: var(--font-pixel);
+    font-size: 0.6rem;
+    margin-bottom: 8px;
+    color: var(--slate);
+}
+
+.toast.success h4 { color: var(--success); }
+
+.toast-content p {
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    color: var(--slate);
+    line-height: 1.2;
+}
+
+.toast::before {
+    content: '>>';
+    position: absolute;
+    left: -30px;
+    font-family: var(--font-pixel);
+    font-size: 0.8rem;
+    color: var(--slate);
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
