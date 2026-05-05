@@ -61,7 +61,8 @@ pipeline {
                         sonar-scanner \
                           -Dsonar.projectKey=parksim-os \
                           -Dsonar.sources=backend \
-                          -Dsonar.exclusions=**/node_modules/**,**/*.test.js \
+                          -Dsonar.exclusions=**/node_modules/**,**/*.test.js,**/package-lock.json \
+                          -Dsonar.javascript.node.maxspace=512 \
                           -Dsonar.host.url=${SONAR_HOST} \
                           -Dsonar.token=${SONAR_TOKEN}
                     '''
