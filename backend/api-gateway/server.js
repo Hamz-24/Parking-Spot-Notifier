@@ -5,7 +5,12 @@ const morgan = require('morgan');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+// ─── Service URLs (Docker Compose uses container names, local dev uses localhost) ─
+const USER_SERVICE_URL         = process.env.USER_SERVICE_URL         || 'http://localhost:3001';
+const PARKING_SERVICE_URL      = process.env.PARKING_SERVICE_URL      || 'http://localhost:3002';
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
 
 app.use(cors());
 app.use(morgan('dev'));
@@ -16,16 +21,23 @@ app.use(morgan('dev'));
  */
 app.use(express.static(path.join(__dirname, '../../frontend')));
 
-// Standard Proxies (Backend Microservices)
-app.use('/auth', createProxyMiddleware({ target: 'http://localhost:3001/auth', changeOrigin: true }));
-app.use('/parking', createProxyMiddleware({ target: 'http://localhost:3002/parking', changeOrigin: true }));
+// ─── Standard Proxies ────────────────────────────────────────────────────────
+app.use('/auth', createProxyMiddleware({
+    target: `${USER_SERVICE_URL}/auth`,
+    changeOrigin: true
+}));
+
+app.use('/parking', createProxyMiddleware({
+    target: `${PARKING_SERVICE_URL}/parking`,
+    changeOrigin: true
+}));
 
 /**
  * SSE Proxy for Notification Service
  * Optimized for persistent, non-buffered connections
  */
-app.use('/notification', createProxyMiddleware({ 
-    target: 'http://localhost:3003/notification', 
+app.use('/notification', createProxyMiddleware({
+    target: `${NOTIFICATION_SERVICE_URL}/notification`,
     changeOrigin: true,
     ws: true,
     proxyTimeout: 0,
@@ -37,15 +49,27 @@ app.use('/notification', createProxyMiddleware({
     }
 }));
 
-// Health Check Proxying
-app.use('/health/user', createProxyMiddleware({ target: 'http://localhost:3001/health', changeOrigin: true }));
-app.use('/health/parking', createProxyMiddleware({ target: 'http://localhost:3002/health', changeOrigin: true }));
-app.use('/health/notification', createProxyMiddleware({ target: 'http://localhost:3003/health', changeOrigin: true }));
+// ─── Health Check Proxying ────────────────────────────────────────────────────
+app.use('/health/user', createProxyMiddleware({
+    target: `${USER_SERVICE_URL}/health`,
+    changeOrigin: true
+}));
 
-// Default Route for UI (fallback to index.html for SPA-like feel)
+app.use('/health/parking', createProxyMiddleware({
+    target: `${PARKING_SERVICE_URL}/health`,
+    changeOrigin: true
+}));
+
+app.use('/health/notification', createProxyMiddleware({
+    target: `${NOTIFICATION_SERVICE_URL}/health`,
+    changeOrigin: true
+}));
+
+// ─── Default Route for UI ─────────────────────────────────────────────────────
 app.get('/*splat', (req, res) => {
-    // Only serve index.html if it's not an API call
-    if (!req.path.startsWith('/auth') && !req.path.startsWith('/parking') && !req.path.startsWith('/notification')) {
+    if (!req.path.startsWith('/auth') &&
+        !req.path.startsWith('/parking') &&
+        !req.path.startsWith('/notification')) {
         const filePath = path.join(__dirname, '../../frontend/index.html');
         res.sendFile(filePath);
     }
@@ -53,5 +77,9 @@ app.get('/*splat', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`\n\x1b[32m[SYSTEM_UPLINK] Complete stack active!\x1b[0m`);
-    console.log(`\x1b[36m-> LIVE SIMULATOR:\x1b[0m http://localhost:3000\n`);
+    console.log(`\x1b[36m-> LIVE SIMULATOR:\x1b[0m http://localhost:${PORT}\n`);
+    console.log(`\x1b[33m[GATEWAY] Routes:\x1b[0m`);
+    console.log(`  /auth        → ${USER_SERVICE_URL}`);
+    console.log(`  /parking     → ${PARKING_SERVICE_URL}`);
+    console.log(`  /notification → ${NOTIFICATION_SERVICE_URL}\n`);
 });

@@ -1,0 +1,153 @@
+# =============================================================================
+# ParkSim OS — Docker Compose
+# Orchestrates all 4 microservices + MySQL database
+# =============================================================================
+
+version: '3.8'
+
+services:
+
+  # ─── MySQL Database ──────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: parksim-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: parksim123
+      MYSQL_DATABASE: parking_db
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "3306:3306"
+    networks:
+      - parksim-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pparksim123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ─── Notification Service (3003) ─────────────────────────────────────────
+  # Must start before parking-service (it broadcasts SSE events)
+  notification-service:
+    build:
+      context: ./backend/notification-service
+      dockerfile: Dockerfile
+    image: parksim/notification-service:latest
+    container_name: parksim-notification
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    networks:
+      - parksim-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ─── User Service (3001) ─────────────────────────────────────────────────
+  user-service:
+    build:
+      context: ./backend/user-service
+      dockerfile: Dockerfile
+    image: parksim/user-service:latest
+    container_name: parksim-user
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASS: parksim123
+      DB_NAME: parking_db
+      JWT_SECRET: supersecretjwt_parksim2024
+      NODE_ENV: production
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - parksim-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─── Parking Service (3002) ──────────────────────────────────────────────
+  parking-service:
+    build:
+      context: ./backend/parking-service
+      dockerfile: Dockerfile
+    image: parksim/parking-service:latest
+    container_name: parksim-parking
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASS: parksim123
+      DB_NAME: parking_db
+      NOTIFICATION_SERVICE_URL: http://notification-service:3003
+      NODE_ENV: production
+    depends_on:
+      mysql:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    networks:
+      - parksim-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─── API Gateway (3000) ──────────────────────────────────────────────────
+  # Single entry point — serves frontend + reverse proxies backend services
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    image: parksim/api-gateway:latest
+    container_name: parksim-gateway
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      USER_SERVICE_URL: http://user-service:3001
+      PARKING_SERVICE_URL: http://parking-service:3002
+      NOTIFICATION_SERVICE_URL: http://notification-service:3003
+      NODE_ENV: production
+    depends_on:
+      user-service:
+        condition: service_healthy
+      parking-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    networks:
+      - parksim-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health/user"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+# ─── Networks ────────────────────────────────────────────────────────────────
+networks:
+  parksim-net:
+    driver: bridge
+    name: parksim-network
+
+# ─── Volumes ─────────────────────────────────────────────────────────────────
+volumes:
+  mysql_data:
+    name: parksim-mysql-data

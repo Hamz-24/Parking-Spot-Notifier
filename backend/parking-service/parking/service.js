@@ -1,11 +1,15 @@
 const db = require('../config/db');
 
+// ─── Notification Service URL ─────────────────────────────────────────────────
+// In Docker Compose: uses container name "notification-service"
+// Locally: falls back to localhost:3003
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
+
 // Microservice Communication Helper
 async function notifyService(payload) {
     try {
         console.log(`[PARKING_SERVICE] Broadcasting event: ${payload.event} at ${payload.location || 'GLOBAL'}`);
-        // notification-service runs on localhost:3003
-        await fetch('http://localhost:3003/notification/internal/notify', {
+        await fetch(`${NOTIFICATION_SERVICE_URL}/notification/internal/notify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -51,7 +55,6 @@ exports.updateSpotStatus = async (id, status) => {
             message: `Parking sector at ${location} is now FREE!`
         });
     } else if (status === 'Occupied') {
-        // Optional: Alert on occupation, but user specifically asked for Freeing alerts
         await notifyService({
             event: 'spot_busy',
             spotId: id,

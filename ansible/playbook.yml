@@ -1,0 +1,167 @@
+---
+# =============================================================================
+# ParkSim OS — Ansible Playbook
+# Configures an Ubuntu 22.04 EC2 instance with:
+#   - Docker + Docker Compose v2
+#   - Nginx reverse proxy
+#   - All 4 microservices running via docker compose
+# =============================================================================
+
+- name: Configure ParkSim OS Server
+  hosts: ec2
+  become: yes
+  vars:
+    app_dir: /home/ubuntu/parksim
+    app_user: ubuntu
+
+  tasks:
+
+    # ── System Update ──────────────────────────────────────────────────────
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Upgrade all installed packages
+      apt:
+        upgrade: safe
+
+    # ── Install Required Packages ──────────────────────────────────────────
+    - name: Install Docker, Nginx, Git and utilities
+      apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+          - nginx
+          - git
+          - curl
+          - python3-pip
+        state: present
+
+    # ── Docker Service ─────────────────────────────────────────────────────
+    - name: Start and enable Docker daemon
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add ubuntu user to docker group (no sudo needed)
+      user:
+        name: "{{ app_user }}"
+        groups: docker
+        append: yes
+
+    # ── Deploy Application ─────────────────────────────────────────────────
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+
+    - name: Copy entire project to EC2 server
+      synchronize:
+        src: ../
+        dest: "{{ app_dir }}/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=.git"
+          - "--exclude=terraform"
+          - "--exclude=ansible"
+
+    - name: Set correct ownership on application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        recurse: yes
+
+    - name: Start ParkSim App Services with Docker Compose
+      command: docker compose up -d --build --force-recreate
+      args:
+        chdir: "{{ app_dir }}"
+      become_user: "{{ app_user }}"
+
+    - name: Start Jenkins & SonarQube (DevOps Stack) with Docker Compose
+      command: docker compose -f devops/docker-compose.devops.yml up -d --build --force-recreate
+      args:
+        chdir: "{{ app_dir }}"
+      become_user: "{{ app_user }}"
+
+    # ── Nginx Reverse Proxy ────────────────────────────────────────────────
+    - name: Remove default Nginx site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Configure Nginx reverse proxy for ParkSim
+      copy:
+        dest: /etc/nginx/sites-available/parksim
+        mode: '0644'
+        content: |
+          server {
+              listen 80;
+              server_name _;
+
+              # Access logs
+              access_log /var/log/nginx/parksim_access.log;
+              error_log  /var/log/nginx/parksim_error.log;
+
+              # Proxy all traffic to the API Gateway on port 3000
+              location / {
+                  proxy_pass         http://localhost:3000;
+                  proxy_http_version 1.1;
+
+                  # SSE / WebSocket support
+                  proxy_set_header Upgrade    $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_set_header Host       $host;
+
+                  # Pass real client IP
+                  proxy_set_header X-Real-IP        $remote_addr;
+                  proxy_set_header X-Forwarded-For  $proxy_add_x_forwarded_for;
+
+                  # Disable buffering for SSE streams
+                  proxy_buffering    off;
+                  proxy_cache        off;
+                  proxy_read_timeout 86400s;
+                  proxy_send_timeout 86400s;
+              }
+          }
+
+    - name: Enable ParkSim Nginx site
+      file:
+        src:   /etc/nginx/sites-available/parksim
+        dest:  /etc/nginx/sites-enabled/parksim
+        state: link
+
+    - name: Test Nginx configuration
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
+        enabled: yes
+
+    # ── Health Check ───────────────────────────────────────────────────────
+    - name: Wait for API Gateway to be healthy (up to 60s)
+      uri:
+        url: "http://localhost:3000/health/user"
+        status_code: 200
+      register: health
+      until: health.status == 200
+      retries: 12
+      delay: 5
+      ignore_errors: yes
+
+    - name: Print deployment result
+      debug:
+        msg: >
+          ✅ ParkSim OS is live!
+          Access at: http://{{ ansible_host }}
