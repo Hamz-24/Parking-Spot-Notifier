@@ -18,8 +18,6 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "3306:3306"
     networks:
       - parksim-net
     healthcheck:
@@ -38,8 +36,6 @@ services:
     image: parksim/notification-service:latest
     container_name: parksim-notification
     restart: unless-stopped
-    ports:
-      - "3003:3003"
     networks:
       - parksim-net
     healthcheck:
@@ -57,8 +53,6 @@ services:
     image: parksim/user-service:latest
     container_name: parksim-user
     restart: unless-stopped
-    ports:
-      - "3001:3001"
     environment:
       DB_HOST: mysql
       DB_USER: root
@@ -86,8 +80,6 @@ services:
     image: parksim/parking-service:latest
     container_name: parksim-parking
     restart: unless-stopped
-    ports:
-      - "3002:3002"
     environment:
       DB_HOST: mysql
       DB_USER: root
@@ -119,7 +111,7 @@ services:
     container_name: parksim-gateway
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "4000:3000"
     environment:
       USER_SERVICE_URL: http://user-service:3001
       PARKING_SERVICE_URL: http://parking-service:3002

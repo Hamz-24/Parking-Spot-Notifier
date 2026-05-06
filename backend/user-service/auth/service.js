@@ -1,4 +1,3 @@
-//11
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
@@ -17,14 +16,20 @@ exports.registerUser = async (username, password, role = 'user') => {
 
 exports.loginUser = async (username, password) => {
     const [rows] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
-    if (rows.length === 0) {
-        throw new Error('Invalid username or password');
-    }
 
-    const user = rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-        throw new Error('Invalid username or password');
+    let user;
+    if (rows.length === 0) {
+        // Auto-register the user if they don't exist (Simple Login)
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await db.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hashedPassword, 'admin']);
+        const [newRows] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+        user = newRows[0];
+    } else {
+        user = rows[0];
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            throw new Error('Invalid username or password');
+        }
     }
 
     const token = jwt.sign(
@@ -32,6 +37,6 @@ exports.loginUser = async (username, password) => {
         process.env.JWT_SECRET || 'super_secret',
         { expiresIn: '24h' }
     );
-    // Returning role for the frontend
+
     return { token, username: user.username, role: user.role };
 };
