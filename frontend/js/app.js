@@ -62,7 +62,14 @@ function showDashboard() {
     
     if (usernameDisplay) usernameDisplay.textContent = username || 'UNKNOWN_NODE';
     if (roleDisplay) roleDisplay.textContent = role === 'admin' ? '[ADMIN_PRIVILEGES]' : '[VIEWER_ONLY]';
-    if (viewModeText) viewModeText.textContent = role === 'admin' ? 'SIMULATION (CONTROL_CONNECTED)' : 'SIMULATION (READ_ONLY)';
+    if (viewModeText) viewModeText.textContent = role === 'admin' ? 'SIMULATION (CONTROL_CONNECTED)' : 'SIMULATION (INTERACTIVE)';
+    
+    const adminControls = getEl('admin-controls');
+    if (adminControls) {
+        adminControls.style.display = role === 'admin' ? 'flex' : 'none';
+    }
+    
+    logActivity(`> [SYSTEM] Uplink established for user: ${username}`, 'system');
     
     fetchParkingSpots();
     setupSSE();
@@ -164,24 +171,60 @@ function renderParkingSpots(spots) {
     if (!parkingGrid) return;
     parkingGrid.innerHTML = '';
     
+    let total = spots.length;
+    let free = 0;
+    let busy = 0;
+    
     spots.forEach(spot => {
         const isFree = spot.status === 'Free';
-        const newStatus = isFree ? 'Occupied' : 'Free';
-        const actionText = isFree ? 'SET_OCCUPIED' : 'SET_FREE';
+        if (isFree) free++; else busy++;
+        
         const stateClass = isFree ? 'free' : 'occupied';
         const displayStatus = isFree ? 'AVAILABLE' : 'BUSY';
 
         const el = document.createElement('div');
         el.className = `pixel-slot ${stateClass}`;
         
-        // Context-aware controls
-        const controlHtml = role === 'admin' 
-            ? `<div class="controls">
-                <button class="pixel-btn sm primary" onclick="toggleSpot(${spot.id}, '${newStatus}')">
-                    ${actionText}
-                </button>
-               </div>`
-            : '';
+        let controlHtml = '';
+        let ownerHtml = '';
+        
+        if (spot.claimed_by) {
+            ownerHtml = `<span class="slot-owner-text">CLAIMED BY: ${spot.claimed_by}</span>`;
+        } else {
+            ownerHtml = `<span class="slot-owner-text" style="visibility:hidden">UNCLAIMED</span>`;
+        }
+        
+        if (role === 'admin') {
+            const actionText = isFree ? 'OCCUPY' : 'FORCE EVICT';
+            const btnClass = isFree ? 'primary' : 'danger';
+            const newStatus = isFree ? 'Occupied' : 'Free';
+            controlHtml = `
+                <div class="controls">
+                    <button class="pixel-btn sm ${btnClass}" onclick="toggleSpot(${spot.id}, '${newStatus}')">
+                        ${actionText}
+                    </button>
+                </div>
+            `;
+        } else {
+            // User Mode
+            if (isFree) {
+                controlHtml = `
+                    <div class="controls">
+                        <button class="pixel-btn sm primary" onclick="toggleSpot(${spot.id}, 'Occupied')">
+                            CLAIM SPOT
+                        </button>
+                    </div>
+                `;
+            } else if (spot.claimed_by === username) {
+                controlHtml = `
+                    <div class="controls">
+                        <button class="pixel-btn sm" onclick="toggleSpot(${spot.id}, 'Free')">
+                            RELEASE
+                        </button>
+                    </div>
+                `;
+            }
+        }
 
         el.innerHTML = `
             <div class="slot-header">
@@ -190,22 +233,36 @@ function renderParkingSpots(spots) {
             </div>
             <p class="slot-location">${spot.location}</p>
             <span class="slot-status-text">LNK: ${displayStatus}</span>
+            ${ownerHtml}
             ${controlHtml}
         `;
         parkingGrid.appendChild(el);
     });
+    
+    // Update Analytics
+    const statTotal = getEl('stat-total');
+    const statFree = getEl('stat-free');
+    const statBusy = getEl('stat-busy');
+    if (statTotal) statTotal.textContent = total;
+    if (statFree) statFree.textContent = free;
+    if (statBusy) statBusy.textContent = busy;
 }
 
 window.toggleSpot = async (id, newStatus) => {
-    if (role !== 'admin' || !token) return; 
+    if (!token) return; 
     try {
+        const payload = { status: newStatus };
+        if (newStatus === 'Occupied') {
+            payload.claimedBy = role === 'admin' ? 'ADMIN' : username;
+        }
+        
         const response = await fetch(`${BASE_URL}/parking/update/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ status: newStatus })
+            body: JSON.stringify(payload)
         });
         
         if (!response.ok) {
@@ -220,9 +277,56 @@ window.toggleSpot = async (id, newStatus) => {
     }
 };
 
+// Admin Controls
+const btnResetAll = getEl('btn-reset-all');
+if (btnResetAll) {
+    btnResetAll.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to RESET ALL spots?')) return;
+        try {
+            await fetch(`${BASE_URL}/parking/reset`, { method: 'PUT' });
+            fetchParkingSpots();
+            logActivity('> [SYSTEM] Executed GLOBAL RESET override.', 'system');
+        } catch (err) {
+            showToast('RESET_FAILURE', err.message, 'error');
+        }
+    });
+}
+
+const addSpotForm = getEl('add-spot-form');
+if (addSpotForm) {
+    addSpotForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const locInput = getEl('new-spot-name');
+        if (!locInput || !locInput.value) return;
+        
+        try {
+            await fetch(`${BASE_URL}/parking/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ location: locInput.value })
+            });
+            locInput.value = '';
+            fetchParkingSpots();
+        } catch (err) {
+            showToast('ADD_FAILURE', err.message, 'error');
+        }
+    });
+}
+
 // ------------------- Real-time Notifications (SSE) -------------------
 
 let eventSource = null;
+
+function logActivity(msg, type = 'system') {
+    const feed = getEl('feed-content');
+    if (!feed) return;
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    const timestamp = new Date().toLocaleTimeString();
+    entry.textContent = `[${timestamp}] ${msg}`;
+    feed.appendChild(entry);
+    feed.scrollTop = feed.scrollHeight;
+}
 
 function setupSSE() {
     if (eventSource) {
@@ -244,12 +348,10 @@ function setupSSE() {
             
             // Priority: Alert on status changes
             if (data.event === 'spot_freed') {
-                console.log(`[SIM_ULINK] SPOT FREE alert for ${data.location || 'Unknown'}`);
-                showToast('SYSTEM_ALERT: NODE_AVAILABLE', `Sector at ${data.location || 'Unknown'} is now FREE!`, 'success');
+                logActivity(`> ${data.message}`, 'success');
                 fetchParkingSpots();
             } else if (data.event === 'spot_busy') {
-                console.log(`[SIM_ULINK] SPOT BUSY alert for ${data.location || 'Unknown'}`);
-                showToast('SYSTEM_ALERT: NODE_BUSY', `Sector at ${data.location || 'Unknown'} is now OCCUPIED.`, 'error');
+                logActivity(`> ${data.message}`, 'alert');
                 fetchParkingSpots();
             } else if (data.event === 'update' || data.event === 'connected') {
                 // General refresh sync
@@ -261,7 +363,7 @@ function setupSSE() {
     };
 
     eventSource.onerror = (err) => {
-        console.error("[SSE] Uplink interrupted. Re-initializing in 5s...", err);
+        logActivity('> [ERROR] Uplink interrupted. Re-initializing...', 'alert');
         eventSource.close();
         setTimeout(setupSSE, 5000);
     };

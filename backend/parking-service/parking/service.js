@@ -24,7 +24,7 @@ exports.getSpots = async () => {
     return rows;
 };
 
-exports.updateSpotStatus = async (id, status) => {
+exports.updateSpotStatus = async (id, status, claimedBy = null) => {
     if (!['Free', 'Occupied'].includes(status)) {
         throw new Error('Invalid status');
     }
@@ -40,31 +40,56 @@ exports.updateSpotStatus = async (id, status) => {
     const previousStatus = spotBefore.status;
     const location = spotBefore.location;
     
-    console.log(`[PARKING_SERVICE] Status Transition: ${previousStatus} -> ${status} for ${location}`);
+    // If setting to Free, clear claimed_by. If Occupied, set claimed_by.
+    const finalClaimedBy = status === 'Free' ? null : claimedBy;
+    
+    console.log(`[PARKING_SERVICE] Status Transition: ${previousStatus} -> ${status} for ${location} by ${finalClaimedBy}`);
     
     // Update the database
-    await db.query('UPDATE parking_spots SET status = ? WHERE id = ?', [status, id]);
+    await db.query('UPDATE parking_spots SET status = ?, claimed_by = ? WHERE id = ?', [status, finalClaimedBy, id]);
     
     // Notify specifically if a spot was FREED
     if (previousStatus === 'Occupied' && status === 'Free') {
+        const msg = claimedBy ? `Admin evicted user from ${location}` : `Parking sector at ${location} is now FREE!`;
         console.log(`[PARKING_SERVICE] Notification Triggered: NODE_AVAILABLE for ${location}`);
         await notifyService({
             event: 'spot_freed',
             spotId: id,
             location: location,
-            message: `Parking sector at ${location} is now FREE!`
+            message: msg
         });
     } else if (status === 'Occupied') {
+        const msg = claimedBy ? `User '${claimedBy}' claimed sector ${location}` : `Parking sector at ${location} is now BUSY!`;
         await notifyService({
             event: 'spot_busy',
             spotId: id,
             location: location,
-            message: `Parking sector at ${location} is now BUSY!`
+            message: msg
         });
     }
     
     // General update for dashboard sync
     await notifyService({ event: 'update' });
     
-    return { id, status, location, message: 'Status updated successfully' };
+    return { id, status, location, claimed_by: finalClaimedBy, message: 'Status updated successfully' };
+};
+
+exports.resetAllSpots = async () => {
+    await db.query('UPDATE parking_spots SET status = "Free", claimed_by = NULL');
+    await notifyService({
+        event: 'spot_freed',
+        message: 'SYSTEM OVERRIDE: All parking sectors have been reset to FREE.'
+    });
+    await notifyService({ event: 'update' });
+    return { message: 'All spots reset successfully' };
+};
+
+exports.addSpot = async (location) => {
+    const [result] = await db.query('INSERT INTO parking_spots (location, status, claimed_by) VALUES (?, "Free", NULL)', [location]);
+    await notifyService({
+        event: 'spot_freed',
+        message: `SYSTEM UPDATE: New sector '${location}' added to the grid.`
+    });
+    await notifyService({ event: 'update' });
+    return { id: result.insertId, location, status: 'Free' };
 };

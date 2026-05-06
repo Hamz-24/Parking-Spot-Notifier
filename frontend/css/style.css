@@ -366,3 +366,112 @@ body {
 @keyframes blink {
     50% { opacity: 0; }
 }
+
+/* ==================================================
+                    NEW DASHBOARD UI
+================================================== */
+.dashboard-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    border: 4px solid var(--border-dark);
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.05);
+}
+
+.analytics-bar {
+    display: flex;
+    gap: 20px;
+}
+
+.text-success { color: var(--success); }
+.text-danger { color: var(--terracotta); }
+
+.admin-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.add-spot-form {
+    display: flex;
+    gap: 10px;
+}
+
+.pixel-input {
+    border: 3px solid var(--border-dark);
+    font-family: var(--font-ui);
+    padding: 5px;
+    background: var(--paper);
+    outline: none;
+}
+.pixel-input.sm { padding: 5px; font-size: 0.6rem; }
+
+.dashboard-layout {
+    display: grid;
+    grid-template-columns: 3fr 1fr;
+    gap: 2.5rem;
+}
+
+.activity-feed {
+    background: var(--slate);
+    color: var(--moss);
+    border: 4px solid var(--border-dark);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 400px;
+    box-shadow: 6px 6px 0 rgba(0,0,0,0.1);
+}
+
+.feed-header {
+    background: #2a2c41;
+    padding: 10px;
+    border-bottom: 2px solid var(--border-dark);
+    text-align: center;
+}
+
+.feed-header .pixel-text {
+    color: var(--sand);
+    font-size: 0.8rem;
+}
+
+.feed-content {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.log-entry {
+    line-height: 1.4;
+}
+
+.log-entry.system { color: var(--sand); }
+.log-entry.success { color: var(--success); }
+.log-entry.alert { color: var(--terracotta); }
+
+/* Ownership Label */
+.slot-owner-text {
+    font-size: 0.6rem;
+    color: var(--terracotta);
+    font-weight: bold;
+    display: block;
+    margin-bottom: 10px;
+    min-height: 14px;
+}
+
+.danger { background: var(--terracotta) !important; color: white !important; }
+
+/* Responsive */
+@media (max-width: 900px) {
+    .dashboard-layout {
+        grid-template-columns: 1fr;
+    }
+}

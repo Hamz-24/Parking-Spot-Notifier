@@ -1,3 +1,4 @@
+//11
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
@@ -27,8 +28,8 @@ exports.loginUser = async (username, password) => {
     }
 
     const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role }, 
-        process.env.JWT_SECRET || 'super_secret', 
+        { id: user.id, username: user.username, role: user.role },
+        process.env.JWT_SECRET || 'super_secret',
         { expiresIn: '24h' }
     );
     // Returning role for the frontend

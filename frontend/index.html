@@ -82,6 +82,23 @@
 
             <!-- Dashboard Section -->
             <section id="dashboard-section" class="dashboard-section" style="display: none;">
+                <!-- Analytics Bar & Admin Controls -->
+                <div class="dashboard-toolbar">
+                    <div class="analytics-bar">
+                        <span class="pixel-label">TOTAL: <span id="stat-total">0</span></span>
+                        <span class="pixel-label text-success">FREE: <span id="stat-free">0</span></span>
+                        <span class="pixel-label text-danger">BUSY: <span id="stat-busy">0</span></span>
+                    </div>
+                    
+                    <div id="admin-controls" class="admin-controls" style="display: none;">
+                        <form id="add-spot-form" class="add-spot-form">
+                            <input type="text" id="new-spot-name" placeholder="SECTOR_NAME..." required autocomplete="off" class="pixel-input sm">
+                            <button type="submit" class="pixel-btn sm primary">ADD</button>
+                        </form>
+                        <button id="btn-reset-all" class="pixel-btn sm danger">RESET_ALL</button>
+                    </div>
+                </div>
+
                 <div class="dashboard-header">
                     <div class="simulation-status">
                         <span class="view-mode-label">MODE: <span id="view-mode-text">SIMULATION</span></span>
@@ -92,9 +109,22 @@
                     </div>
                 </div>
                 
-                <!-- The Parking Simulator Grid -->
-                <div id="parking-grid" class="parking-grid">
-                    <!-- Dynamic Pixel Spots -->
+                <div class="dashboard-layout">
+                    <!-- The Parking Simulator Grid -->
+                    <div id="parking-grid" class="parking-grid">
+                        <!-- Dynamic Pixel Spots -->
+                    </div>
+                    
+                    <!-- Activity Feed (Terminal Log) -->
+                    <div class="activity-feed">
+                        <div class="feed-header">
+                            <span class="pixel-text">SYSTEM_LOG</span>
+                        </div>
+                        <div id="feed-content" class="feed-content">
+                            <!-- Logs go here -->
+                            <div class="log-entry system">> [SYSTEM] Uplink established...</div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>
