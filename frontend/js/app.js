@@ -158,7 +158,7 @@ if (authForm) {
 
 async function fetchParkingSpots() {
     try {
-        const response = await fetch(`${BASE_URL}/parking`);
+        const response = await fetch(`${BASE_URL}/parking`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Data flow interrupted');
         const spots = await response.json();
         renderParkingSpots(spots);
@@ -189,7 +189,11 @@ function renderParkingSpots(spots) {
         let ownerHtml = '';
         
         if (spot.claimed_by) {
-            ownerHtml = `<span class="slot-owner-text">CLAIMED BY: ${spot.claimed_by}</span>`;
+            let plateStr = spot.vehicle_plate ? ` [${spot.vehicle_plate}]` : '';
+            ownerHtml = `<span class="slot-owner-text">CLAIMED BY: ${spot.claimed_by}${plateStr}</span>`;
+            if (spot.expires_at) {
+                ownerHtml += `<br><span class="slot-timer-text" data-expires="${spot.expires_at}" style="font-size: 0.8rem; color: #FF9800; margin-top: 5px; display: inline-block;"></span>`;
+            }
         } else {
             ownerHtml = `<span class="slot-owner-text" style="visibility:hidden">UNCLAIMED</span>`;
         }
@@ -254,6 +258,9 @@ window.toggleSpot = async (id, newStatus) => {
         const payload = { status: newStatus };
         if (newStatus === 'Occupied') {
             payload.claimedBy = role === 'admin' ? 'ADMIN' : username;
+            const plate = prompt("Enter Vehicle License Plate (optional):", "MH-01-AB-1234");
+            if (plate === null) return; // User cancelled
+            payload.vehiclePlate = plate.toUpperCase();
         }
         
         const response = await fetch(`${BASE_URL}/parking/update/${id}`, {
@@ -396,6 +403,21 @@ function showToast(title, message, type='success') {
 
     toastContainer.appendChild(toast);
 }
+
+// Global Timer Update
+setInterval(() => {
+    document.querySelectorAll('.slot-timer-text').forEach(el => {
+        const expiresAt = parseInt(el.getAttribute('data-expires'));
+        if (!expiresAt) return;
+        const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+        if (remaining > 0) {
+            el.textContent = `EXPIRES IN: ${remaining}s`;
+            el.style.color = remaining <= 10 ? '#F44336' : '#FF9800';
+        } else {
+            el.textContent = 'EXPIRED';
+        }
+    });
+}, 1000);
 
 // Run Simulation
 window.onload = init;

@@ -11,10 +11,10 @@ exports.getAllSpots = async (req, res) => {
 
 exports.updateSpot = async (req, res) => {
     try {
-        const { status, claimedBy } = req.body;
+        const { status, claimedBy, vehiclePlate } = req.body;
         const { id } = req.params;
         
-        const result = await parkingService.updateSpotStatus(id, status, claimedBy);
+        const result = await parkingService.updateSpotStatus(id, status, claimedBy, vehiclePlate);
         res.status(200).json(result);
     } catch (error) {
         if (error.message === 'Spot not found' || error.message === 'Invalid status') {

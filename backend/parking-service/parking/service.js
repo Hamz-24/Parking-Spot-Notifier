@@ -24,7 +24,7 @@ exports.getSpots = async () => {
     return rows;
 };
 
-exports.updateSpotStatus = async (id, status, claimedBy = null) => {
+exports.updateSpotStatus = async (id, status, claimedBy = null, vehiclePlate = null) => {
     if (!['Free', 'Occupied'].includes(status)) {
         throw new Error('Invalid status');
     }
@@ -40,13 +40,16 @@ exports.updateSpotStatus = async (id, status, claimedBy = null) => {
     const previousStatus = spotBefore.status;
     const location = spotBefore.location;
     
-    // If setting to Free, clear claimed_by. If Occupied, set claimed_by.
+    // If setting to Free, clear data. If Occupied, set data.
     const finalClaimedBy = status === 'Free' ? null : claimedBy;
+    const finalVehiclePlate = status === 'Free' ? null : vehiclePlate;
+    const finalExpiresAt = status === 'Free' ? null : Date.now() + 60000; // 60 seconds from now
     
     console.log(`[PARKING_SERVICE] Status Transition: ${previousStatus} -> ${status} for ${location} by ${finalClaimedBy}`);
     
     // Update the database
-    await db.query('UPDATE parking_spots SET status = ?, claimed_by = ? WHERE id = ?', [status, finalClaimedBy, id]);
+    await db.query('UPDATE parking_spots SET status = ?, claimed_by = ?, vehicle_plate = ?, expires_at = ? WHERE id = ?', 
+        [status, finalClaimedBy, finalVehiclePlate, finalExpiresAt, id]);
     
     // Notify specifically if a spot was FREED
     if (previousStatus === 'Occupied' && status === 'Free') {
@@ -59,13 +62,27 @@ exports.updateSpotStatus = async (id, status, claimedBy = null) => {
             message: msg
         });
     } else if (status === 'Occupied') {
-        const msg = claimedBy ? `User '${claimedBy}' claimed sector ${location}` : `Parking sector at ${location} is now BUSY!`;
+        const msg = claimedBy ? `User '${claimedBy}' claimed sector ${location} [${finalVehiclePlate || 'NO PLATE'}]` : `Parking sector at ${location} is now BUSY!`;
         await notifyService({
             event: 'spot_busy',
             spotId: id,
             location: location,
             message: msg
         });
+
+        // Auto-expiry timer (60 seconds)
+        setTimeout(async () => {
+            try {
+                // Verify it's still occupied by the same expiry timestamp before freeing
+                const [checkRows] = await db.query('SELECT expires_at FROM parking_spots WHERE id = ?', [id]);
+                if (checkRows.length > 0 && checkRows[0].expires_at === finalExpiresAt) {
+                    console.log(`[PARKING_SERVICE] Auto-expiring spot ${location}`);
+                    await exports.updateSpotStatus(id, 'Free');
+                }
+            } catch (err) {
+                console.error(`[PARKING_SERVICE] Auto-expiry failed for ${location}:`, err.message);
+            }
+        }, 60000);
     }
     
     // General update for dashboard sync

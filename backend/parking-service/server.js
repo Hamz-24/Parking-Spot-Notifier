@@ -23,16 +23,22 @@ const db = require('./config/db');
 // Run auto-migration on boot
 async function initDB() {
     try {
-        console.log('[DB_INIT] Checking for claimed_by column...');
-        await db.query(`ALTER TABLE parking_spots ADD COLUMN claimed_by VARCHAR(100) DEFAULT NULL`);
-        console.log('[DB_INIT] Successfully added claimed_by column to parking_spots.');
+        console.log('[DB_INIT] Checking schema updates...');
+        try {
+            await db.query(`ALTER TABLE parking_spots ADD COLUMN claimed_by VARCHAR(100) DEFAULT NULL`);
+        } catch (e) { if (e.code !== 'ER_DUP_FIELDNAME') console.error(e.message); }
+        
+        try {
+            await db.query(`ALTER TABLE parking_spots ADD COLUMN vehicle_plate VARCHAR(50) DEFAULT NULL`);
+        } catch (e) { if (e.code !== 'ER_DUP_FIELDNAME') console.error(e.message); }
+        
+        try {
+            await db.query(`ALTER TABLE parking_spots ADD COLUMN expires_at BIGINT DEFAULT NULL`);
+        } catch (e) { if (e.code !== 'ER_DUP_FIELDNAME') console.error(e.message); }
+        
+        console.log('[DB_INIT] Schema migration checks completed.');
     } catch (err) {
-        // Error code ER_DUP_FIELDNAME (1060) means the column already exists. We can ignore it safely.
-        if (err.code === 'ER_DUP_FIELDNAME') {
-            console.log('[DB_INIT] Column claimed_by already exists. Skipping migration.');
-        } else {
-            console.log(`[DB_INIT] Migration check finished: ${err.message}`);
-        }
+        console.log(`[DB_INIT] Migration check failed: ${err.message}`);
     }
 }
 
