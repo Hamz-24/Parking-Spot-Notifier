@@ -24,13 +24,26 @@ const dbMock = {
             return [clone(spots)];
         }
 
-        // GET specific spot
-        if (sql.includes('SELECT * FROM parking_spots WHERE id = ?')) {
+        // GET specific spot or expires_at
+        if (sql.includes('SELECT * FROM parking_spots WHERE id = ?') || sql.includes('SELECT expires_at FROM parking_spots WHERE id = ?')) {
             const spot = spots.find(s => s.id == params[0]);
             return spot ? [[clone(spot)]] : [[]];
         }
 
-        // UPDATE status
+        // UPDATE status with extra fields
+        if (sql.includes('UPDATE parking_spots SET status = ?, claimed_by = ?, vehicle_plate = ?, expires_at = ? WHERE id = ?')) {
+            const [status, claimed_by, vehicle_plate, expires_at, id] = params;
+            const spotIndex = spots.findIndex(s => s.id == id);
+            if (spotIndex !== -1) {
+                spots[spotIndex].status = status;
+                spots[spotIndex].claimed_by = claimed_by;
+                spots[spotIndex].vehicle_plate = vehicle_plate;
+                spots[spotIndex].expires_at = expires_at;
+                return [{ affectedRows: 1 }];
+            }
+        }
+        
+        // Old UPDATE fallback
         if (sql.includes('UPDATE parking_spots SET status = ? WHERE id = ?')) {
             const [status, id] = params;
             const spotIndex = spots.findIndex(s => s.id == id);
@@ -38,6 +51,25 @@ const dbMock = {
                 spots[spotIndex].status = status;
                 return [{ affectedRows: 1 }];
             }
+        }
+
+        // RESET ALL
+        if (sql.includes('UPDATE parking_spots SET status = "Free", claimed_by = NULL')) {
+            spots.forEach(s => {
+                s.status = 'Free';
+                s.claimed_by = null;
+                s.vehicle_plate = null;
+                s.expires_at = null;
+            });
+            return [{ affectedRows: spots.length }];
+        }
+
+        // ADD SPOT
+        if (sql.includes('INSERT INTO parking_spots')) {
+            const [location] = params;
+            const newSpot = { id: spots.length + 1, location, status: 'Free' };
+            spots.push(newSpot);
+            return [{ insertId: newSpot.id }];
         }
 
         return [[]]; // Default empty
