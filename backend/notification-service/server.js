@@ -18,6 +18,10 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Something went wrong!' });
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log(`Notification-Service is running on port ${port}`);
 });
+
+// Extend timeouts for SSE long-lived connections
+server.keepAliveTimeout = 120000; // 2 minutes
+server.headersTimeout = 120000; // 2 minutes

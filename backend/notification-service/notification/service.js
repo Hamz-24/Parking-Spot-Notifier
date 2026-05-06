@@ -1,5 +1,12 @@
 const clients = [];
 
+// Send a heartbeat comment every 3 seconds to prevent idle timeouts from Proxies/Node
+setInterval(() => {
+    clients.forEach(client => {
+        client.write(': heartbeat\n\n');
+    });
+}, 3000);
+
 exports.addClient = (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
